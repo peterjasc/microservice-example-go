@@ -11,7 +11,7 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	recipesHandler := recipes.NewRecipesHandler()
+	recipesHandler := recipes.RecipeHandler{}
 	app.Mux.HandleFunc("/recipes", recipesHandler.ServeHTTP)
 	app.ListenAndServe()
 }

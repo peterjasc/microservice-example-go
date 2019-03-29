@@ -2,6 +2,7 @@ package recipes
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -23,7 +24,8 @@ func NewRecipeClient() *RecipeClient {
 
 // GetRecipe returns a byte stream for a recipe id
 func (c *RecipeClient) GetRecipe(id string) ([]byte, error) {
-	req, err := http.NewRequest("GET", c.URL+"/"+id, nil)
+	url := fmt.Sprintf("%s/%s", c.URL, id)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +35,7 @@ func (c *RecipeClient) GetRecipe(id string) ([]byte, error) {
 		return nil, err
 	}
 
-	if resp.StatusCode == http.StatusNotFound {
+	if resp.StatusCode != http.StatusOK {
 		return nil, errors.New(strconv.Itoa(http.StatusNotFound) + " - recipe not found")
 	}
 

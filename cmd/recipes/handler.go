@@ -11,12 +11,11 @@ import (
 // RecipeHandler defines the HTTP handling function ServeHTTP
 type RecipeHandler struct{}
 
-// NewRecipesHandler returns empty RecipeHandler struct
-func NewRecipesHandler() *RecipeHandler {
-	return &RecipeHandler{}
-}
-
 func (h RecipeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 	var recipes []Recipe
 
 	idsParam := r.URL.Query().Get("ids")
@@ -25,38 +24,37 @@ func (h RecipeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	rs := NewRecipeService()
 
-	if len(idsParam) > 0 {
-		ids := strings.Split(idsParam, ",")
+	if ids := strings.Split(idsParam, ","); len(ids) > 0 {
 		var err error
 		recipes, err = rs.GetSortedRecipes(ids)
 
 		if err != nil {
-			http.Error(w, "Could not find specified recipes ", 500)
+			http.Error(w, "Could not find specified recipes ", http.StatusInternalServerError)
 			log.Println(err.Error())
 			return
 		}
 	} else if len(topParam) > 0 && len(skipParam) > 0 {
 		skip, err := strconv.Atoi(skipParam)
 		if err != nil {
-			http.Error(w, "Bad top parameter ", 400)
+			http.Error(w, "Bad top parameter ", http.StatusBadRequest)
 			log.Println(err.Error())
 			return
 		}
 		top, err := strconv.Atoi(topParam)
 		if err != nil {
-			http.Error(w, "Bad skip parameter ", 400)
+			http.Error(w, "Bad skip parameter ", http.StatusBadRequest)
 			log.Println(err.Error())
 			return
 		}
 		recipes, err = rs.GetRecipesForRange(skip, top)
 
 		if err != nil {
-			http.Error(w, "Could not find specified recipes ", 500)
+			http.Error(w, "Could not find specified recipes ", http.StatusInternalServerError)
 			log.Println(err.Error())
 			return
 		}
 	} else {
-		http.Error(w, "Bad parameters  ", 400)
+		http.Error(w, "Bad parameters  ", http.StatusBadRequest)
 		return
 	}
 

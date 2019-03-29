@@ -12,8 +12,10 @@ const (
 	maxPageSize = 10
 )
 
+// Client retrieves recipes from 3rd party API
 type Client interface{ GetRecipe(string) ([]byte, error) }
 
+// RecipeService
 type RecipeService struct {
 	Client Client
 }
@@ -75,7 +77,7 @@ func (r *RecipeService) getRecipesForIds(ids []string) (PreparedRecipes, error) 
 			return nil, err
 		}
 
-		err = json.Unmarshal([]byte(recipeJSON), &recipe)
+		err = json.Unmarshal(recipeJSON, &recipe)
 		if err != nil {
 			return nil, err
 		}

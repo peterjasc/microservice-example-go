@@ -23,6 +23,7 @@ func getMockNotFound() *httptest.Server {
 }
 func TestGetRecipe(t *testing.T) {
 	mockServer := getMockServer(mockResponse)
+	defer mockServer.Close()
 
 	client := recipes.NewRecipeClient()
 	client.URL = mockServer.URL
@@ -31,11 +32,12 @@ func TestGetRecipe(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.NotNil(t, body)
-	assert.Equal(t, 2683, len(body))
+	assert.Equal(t, mockResponse, string(body))
 }
 
 func TestNotFound(t *testing.T) {
 	mockServer := getMockNotFound()
+	defer mockServer.Close()
 
 	client := recipes.NewRecipeClient()
 	client.URL = mockServer.URL
