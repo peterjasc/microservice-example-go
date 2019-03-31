@@ -1,116 +1,58 @@
 package recipes
 
 import (
-	"encoding/json"
-	"math"
-	"sort"
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"net/http"
 	"strconv"
-	"strings"
+
+	"github.com/peterjasc/recipes/cmd/config"
 )
 
-const (
-	maxPageSize = 10
-)
-
-// Client retrieves recipes from 3rd party API
-type Client interface{ GetRecipe(string) ([]byte, error) }
-
-// RecipeService
-type RecipeService struct {
-	Client Client
+// RecipeClient handles requests for recipes to 3rd party API
+type RecipeClient struct {
+	Client *http.Client
+	URL    string
 }
 
-// PreparedRecipes is a map of recipies, with key specifying
-// the preparation time in minutes
-type PreparedRecipes map[int][]Recipe
-
-func NewRecipeService() *RecipeService {
-	return &RecipeService{
-		Client: NewRecipeClient(),
+// NewRecipeClient sets up the fields required to make the request for recipes to 3rd party API
+func NewRecipeClient() *RecipeClient {
+	return &RecipeClient{
+		Client: newHTTPClient(),
+		URL:    config.RecipesClientAPIURL,
 	}
 }
 
-// GetSortedRecipes returns recipes for the specified ids
-func (r *RecipeService) GetSortedRecipes(ids []string) ([]Recipe, error) {
-	unsortedRecipes, err := r.getRecipesForIds(ids)
+func newHTTPClient() *http.Client {
+	httpClient := &http.Client{
+		Timeout: config.HTTPClientTimeout,
+	}
+
+	return httpClient
+}
+
+// GetRecipe returns a byte stream for a recipe id
+func (c *RecipeClient) GetRecipe(id string) ([]byte, error) {
+	url := fmt.Sprintf("%s/%s", c.URL, id)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return sortRecipes(unsortedRecipes), nil
-}
-
-// GetRecipesForRange returns  the recipes for a certain range,
-// skipping the number of recipes specified with skip and getting
-// either number of messages specified by maxPageSize or top (whichever is smaller)
-func (r *RecipeService) GetRecipesForRange(skip int, top int) ([]Recipe, error) {
-	rec := make([]Recipe, int(math.Min(float64(top), float64(maxPageSize))))
-
-	end := skip + top
-	counter := 0
-	for i := skip; i <= end && i-skip < len(rec); i++ {
-		var recipe Recipe
-		recipeJSON, err := r.Client.GetRecipe(strconv.Itoa(i + 1))
-
-		if err != nil {
-			return nil, err
-		}
-		err = json.Unmarshal([]byte(recipeJSON), &recipe)
-		if err != nil {
-			return nil, err
-		}
-
-		rec[counter] = recipe
-		counter++
+	resp, err := c.Client.Do(req)
+	if err != nil {
+		return nil, err
 	}
-	return rec, nil
-}
 
-func (r *RecipeService) getRecipesForIds(ids []string) (PreparedRecipes, error) {
-	unsortedRecipes := make(PreparedRecipes)
-	for _, id := range ids {
-		var recipe Recipe
-
-		recipeJSON, err := r.Client.GetRecipe(id)
-
-		if err != nil {
-			return nil, err
-		}
-
-		err = json.Unmarshal(recipeJSON, &recipe)
-		if err != nil {
-			return nil, err
-		}
-
-		key, err := getPrepTimeInMinutes(recipe.PrepTime)
-
-		if err != nil {
-			return nil, err
-		}
-		unsortedRecipes[key] = append(unsortedRecipes[key], recipe)
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New(strconv.Itoa(http.StatusNotFound) + " - recipe not found")
 	}
-	return unsortedRecipes, nil
-}
 
-func sortRecipes(recipes PreparedRecipes) []Recipe {
-	var prepTimes []int
-	for k := range recipes {
-		prepTimes = append(prepTimes, k)
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
 	}
-	sort.Ints(prepTimes)
-
-	var orderedRecipes []Recipe
-	for _, pt := range prepTimes {
-		for _, recipe := range recipes[pt] {
-			orderedRecipes = append(orderedRecipes, recipe)
-		}
-	}
-	return orderedRecipes
-}
-
-func getPrepTimeInMinutes(preptime string) (int, error) {
-	preptime = strings.Replace(preptime, "PT", "", 1)
-	preptime = strings.Replace(preptime, "M", "", 1)
-	return strconv.Atoi(preptime)
-
+	return body, nil
 }

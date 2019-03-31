@@ -4,12 +4,8 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
-)
 
-const (
-	SocketTimeout = 10 * time.Second
-	DefaultPort   = "8080"
+	"github.com/peterjasc/recipes/cmd/config"
 )
 
 // App holds the mux used to add the handler and server for internal usage
@@ -18,12 +14,12 @@ type App struct {
 	server *http.Server
 }
 
-// NewApp setups up http handler to be used by the caller
-// and http server on port specified by PORT environment variable or DefaultPort
+// NewApp setups up http handler to be used by the caller and http server
+// on port specified by PORT environment variable or config.HTTPServerDefaultPort
 func NewApp() (*App, error) {
 	addr := ":" + os.Getenv("PORT")
 	if addr == ":" {
-		addr = ":" + DefaultPort
+		addr = ":" + config.HTTPServerDefaultPort
 	}
 
 	mux := http.NewServeMux()
@@ -40,8 +36,8 @@ func newHTTPServer(handler http.Handler, addr string) *http.Server {
 	httpServer := &http.Server{
 		Handler:      handler,
 		Addr:         addr,
-		ReadTimeout:  SocketTimeout,
-		WriteTimeout: SocketTimeout,
+		ReadTimeout:  config.HTTPServerReadTimeout,
+		WriteTimeout: config.HTTPServerWriteTimeout,
 	}
 
 	return httpServer
