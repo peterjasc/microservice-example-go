@@ -10,10 +10,6 @@ import (
 	"github.com/peterjasc/recipes/cmd/config"
 )
 
-const (
-	maxPageSize = 10
-)
-
 // Client retrieves recipes from 3rd party API
 type Client interface{ GetRecipe(string) ([]byte, error) }
 
@@ -57,7 +53,7 @@ func (r *RecipeService) GetRecipesForRange(skip int, top int) ([]Recipe, error) 
 		if err != nil {
 			return nil, err
 		}
-		err = json.Unmarshal([]byte(recipeJSON), &recipe)
+		err = json.Unmarshal(recipeJSON, &recipe)
 		if err != nil {
 			return nil, err
 		}

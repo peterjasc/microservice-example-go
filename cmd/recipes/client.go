@@ -25,11 +25,9 @@ func NewRecipeClient() *RecipeClient {
 }
 
 func newHTTPClient() *http.Client {
-	httpClient := &http.Client{
+	return &http.Client{
 		Timeout: config.HTTPClientTimeout,
 	}
-
-	return httpClient
 }
 
 // GetRecipe returns a byte stream for a recipe id
@@ -45,8 +43,8 @@ func (c *RecipeClient) GetRecipe(id string) ([]byte, error) {
 		return nil, err
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, errors.New(strconv.Itoa(http.StatusNotFound) + " - recipe not found")
+	if resp.StatusCode >= http.StatusBadRequest {
+		return nil, errors.New(strconv.Itoa(resp.StatusCode) + " - recipe not found")
 	}
 
 	defer resp.Body.Close()

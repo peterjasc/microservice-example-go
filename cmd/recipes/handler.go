@@ -24,7 +24,8 @@ func (h RecipeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	rs := NewRecipeService()
 
-	if ids := strings.Split(idsParam, ","); len(ids) > 0 {
+	if len(idsParam) > 0 {
+		ids := strings.Split(idsParam, ",")
 		var err error
 		recipes, err = rs.GetSortedRecipes(ids)
 
