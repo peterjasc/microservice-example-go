@@ -48,6 +48,5 @@ func TestGetRecipesForRange(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(actual))
-	assert.Equal(t, "2", actual[0].ID)
-	assert.Equal(t, "3", actual[1].ID)
+	assert.True(t, (actual[0].ID == "3" && actual[1].ID == "2") || (actual[0].ID == "2" && actual[1].ID == "3"))
 }

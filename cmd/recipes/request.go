@@ -22,6 +22,12 @@ type RecipeService struct {
 // the preparation time in minutes
 type PreparedRecipes map[int][]Recipe
 
+type recipeWithErrors struct {
+	Recipe   Recipe
+	PrepTime int
+	Error    error
+}
+
 func NewRecipeService() *RecipeService {
 	return &RecipeService{
 		Client: NewRecipeClient(),
@@ -40,53 +46,90 @@ func (r *RecipeService) GetSortedRecipes(ids []string) ([]Recipe, error) {
 
 // GetRecipesForRange returns  the recipes for a certain range,
 // skipping the number of recipes specified with skip and getting
-// either number of messages specified by config.MaxPageSize or top (whichever is smaller)
+// either the number of messages specified by config.MaxPageSize or top (whichever is smaller).
+// No sorting is taking place and results are ordered randomly.
 func (r *RecipeService) GetRecipesForRange(skip int, top int) ([]Recipe, error) {
 	rec := make([]Recipe, int(math.Min(float64(top), float64(config.MaxPageSize))))
 
 	end := skip + top
-	counter := 0
+	c := make(chan recipeWithErrors)
 	for i := skip; i <= end && i-skip < len(rec); i++ {
-		var recipe Recipe
-		recipeJSON, err := r.Client.GetRecipe(strconv.Itoa(i + 1))
+		go func(i int) {
+			recipeJSON, err := r.Client.GetRecipe(strconv.Itoa(i + 1))
 
-		if err != nil {
-			return nil, err
-		}
-		err = json.Unmarshal(recipeJSON, &recipe)
-		if err != nil {
-			return nil, err
-		}
-
-		rec[counter] = recipe
-		counter++
+			if err != nil {
+				c <- recipeWithErrors{Recipe{}, 0, err}
+			}
+			var recipe Recipe
+			err = json.Unmarshal(recipeJSON, &recipe)
+			if err != nil {
+				c <- recipeWithErrors{Recipe{}, 0, err}
+			}
+			c <- recipeWithErrors{recipe, 0, nil}
+		}(i)
 	}
+
+	err := channelRecipes(rec, c)
+
+	if err != nil {
+		return nil, err
+	}
+
 	return rec, nil
+}
+
+func channelRecipes(recipes []Recipe, c chan recipeWithErrors) error {
+	for i := 0; i < len(recipes); i++ {
+		rWE := <-c
+		if rWE.Error != nil {
+			return rWE.Error
+		}
+		recipes[i] = rWE.Recipe
+	}
+	return nil
+}
+
+func channelPreparedRecipes(unsortedRecipes PreparedRecipes, c chan recipeWithErrors, idsLen int) error {
+	for i := 0; i < idsLen; i++ {
+		rWE := <-c
+		if rWE.Error != nil {
+			return rWE.Error
+		}
+		unsortedRecipes[rWE.PrepTime] = append(unsortedRecipes[rWE.PrepTime], rWE.Recipe)
+	}
+	return nil
 }
 
 func (r *RecipeService) getRecipesForIds(ids []string) (PreparedRecipes, error) {
 	unsortedRecipes := make(PreparedRecipes)
+	c := make(chan recipeWithErrors)
 	for _, id := range ids {
-		var recipe Recipe
+		go func(id string) {
 
-		recipeJSON, err := r.Client.GetRecipe(id)
+			recipeJSON, err := r.Client.GetRecipe(id)
 
-		if err != nil {
-			return nil, err
-		}
+			if err != nil {
+				c <- recipeWithErrors{Recipe{}, 0, err}
+			}
 
-		err = json.Unmarshal(recipeJSON, &recipe)
-		if err != nil {
-			return nil, err
-		}
+			var recipe Recipe
+			err = json.Unmarshal(recipeJSON, &recipe)
+			if err != nil {
+				c <- recipeWithErrors{Recipe{}, 0, err}
+			}
 
-		key, err := getPrepTimeInMinutes(recipe.PrepTime)
+			key, err := getPrepTimeInMinutes(recipe.PrepTime)
 
-		if err != nil {
-			return nil, err
-		}
-		unsortedRecipes[key] = append(unsortedRecipes[key], recipe)
+			if err != nil {
+				c <- recipeWithErrors{Recipe{}, 0, err}
+			}
+
+			c <- recipeWithErrors{recipe, key, err}
+		}(id)
 	}
+
+	channelPreparedRecipes(unsortedRecipes, c, len(ids))
+
 	return unsortedRecipes, nil
 }
 
