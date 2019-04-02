@@ -9,7 +9,13 @@ import (
 )
 
 // RecipeHandler defines the HTTP handling function ServeHTTP
-type RecipeHandler struct{}
+type RecipeHandler struct {
+	RecipeService *RecipeService
+}
+
+func NewRecipeHandler() *RecipeHandler {
+	return &RecipeHandler{RecipeService: NewRecipeService()}
+}
 
 func (h RecipeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {

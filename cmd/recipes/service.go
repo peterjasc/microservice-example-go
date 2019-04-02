@@ -10,13 +10,13 @@ import (
 	"github.com/peterjasc/recipes/cmd/config"
 )
 
-// Client retrieves recipes from 3rd party API
-type Client interface{ GetRecipe(string) ([]byte, error) }
-
-// RecipeService
+// RecipeService wraps the Client that retrieves the recipes from 3rd party API
 type RecipeService struct {
 	Client Client
 }
+
+// Client retrieves recipes from 3rd party API
+type Client interface{ GetRecipe(string) ([]byte, error) }
 
 // PreparedRecipes is a map of recipies, with key specifying
 // the preparation time in minutes
@@ -46,8 +46,9 @@ func (r *RecipeService) GetSortedRecipes(ids []string) ([]Recipe, error) {
 
 // GetRecipesForRange returns  the recipes for a certain range,
 // skipping the number of recipes specified with skip and getting
-// either the number of messages specified by config.MaxPageSize or top (whichever is smaller).
-// No sorting is taking place and results are ordered randomly.
+// either the number of messages specified by config.MaxPageSize or top
+// (whichever is smaller). No sorting is taking place and results
+// are ordered randomly.
 func (r *RecipeService) GetRecipesForRange(skip int, top int) ([]Recipe, error) {
 	rec := make([]Recipe, int(math.Min(float64(top), float64(config.MaxPageSize))))
 
@@ -69,7 +70,7 @@ func (r *RecipeService) GetRecipesForRange(skip int, top int) ([]Recipe, error) 
 		}(i)
 	}
 
-	err := channelRecipes(rec, c)
+	err := getRecipesAsync(rec, c)
 
 	if err != nil {
 		return nil, err
@@ -78,7 +79,7 @@ func (r *RecipeService) GetRecipesForRange(skip int, top int) ([]Recipe, error) 
 	return rec, nil
 }
 
-func channelRecipes(recipes []Recipe, c chan recipeWithErrors) error {
+func getRecipesAsync(recipes []Recipe, c chan recipeWithErrors) error {
 	for i := 0; i < len(recipes); i++ {
 		rWE := <-c
 		if rWE.Error != nil {
@@ -89,7 +90,7 @@ func channelRecipes(recipes []Recipe, c chan recipeWithErrors) error {
 	return nil
 }
 
-func channelPreparedRecipes(unsortedRecipes PreparedRecipes, c chan recipeWithErrors, idsLen int) error {
+func getPreparedRecipesAsync(unsortedRecipes PreparedRecipes, c chan recipeWithErrors, idsLen int) error {
 	for i := 0; i < idsLen; i++ {
 		rWE := <-c
 		if rWE.Error != nil {
@@ -128,7 +129,7 @@ func (r *RecipeService) getRecipesForIds(ids []string) (PreparedRecipes, error) 
 		}(id)
 	}
 
-	channelPreparedRecipes(unsortedRecipes, c, len(ids))
+	getPreparedRecipesAsync(unsortedRecipes, c, len(ids))
 
 	return unsortedRecipes, nil
 }
