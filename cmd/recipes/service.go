@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/peterjasc/microservice-example-go/cmd/config"
+	"github.com/peterjasc/microservice-example-go/config"
 )
 
 // RecipeService wraps the Client that retrieves the recipes from 3rd party API
