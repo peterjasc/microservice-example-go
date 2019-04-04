@@ -43,7 +43,7 @@ func (c *RecipeClient) GetRecipe(id string) ([]byte, error) {
 		return nil, err
 	}
 
-	if resp.StatusCode >= http.StatusBadRequest {
+	if resp.StatusCode != http.StatusOK {
 		return nil, errors.New(strconv.Itoa(resp.StatusCode) + " - recipe not found")
 	}
 
