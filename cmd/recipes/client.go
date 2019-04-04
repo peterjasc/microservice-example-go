@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/peterjasc/recipes/cmd/config"
+	"github.com/peterjasc/microservice-example-go/cmd/config"
 )
 
 // RecipeClient handles requests for recipes to 3rd party API

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/peterjasc/recipes/cmd/config"
+	"github.com/peterjasc/microservice-example-go/cmd/config"
 )
 
 // App holds the mux used to add the handler and server for internal usage

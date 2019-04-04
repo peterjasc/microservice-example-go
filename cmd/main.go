@@ -6,7 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/peterjasc/recipes/cmd/recipes"
+	"github.com/peterjasc/microservice-example-go/cmd/recipes"
 )
 
 func main() {

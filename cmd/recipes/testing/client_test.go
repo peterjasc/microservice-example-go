@@ -5,7 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/peterjasc/recipes/cmd/recipes"
+	"github.com/peterjasc/microservice-example-go
+/cmd/recipes"
 
 	"github.com/stretchr/testify/assert"
 )
