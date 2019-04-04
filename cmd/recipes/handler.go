@@ -28,12 +28,10 @@ func (h RecipeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	topParam := r.URL.Query().Get("top")
 	skipParam := r.URL.Query().Get("skip")
 
-	rs := NewRecipeService()
-
 	if len(idsParam) > 0 {
 		ids := strings.Split(idsParam, ",")
 		var err error
-		recipes, err = rs.GetSortedRecipes(ids)
+		recipes, err = h.RecipeService.GetSortedRecipes(ids)
 
 		if err != nil {
 			http.Error(w, "Could not find specified recipes ", http.StatusInternalServerError)
@@ -53,7 +51,7 @@ func (h RecipeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			log.Println(err.Error())
 			return
 		}
-		recipes, err = rs.GetRecipesForRange(skip, top)
+		recipes, err = h.RecipeService.GetRecipesForRange(skip, top)
 
 		if err != nil {
 			http.Error(w, "Could not find specified recipes ", http.StatusInternalServerError)

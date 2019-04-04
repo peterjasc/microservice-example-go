@@ -1,6 +1,7 @@
 package recipes
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
@@ -32,6 +33,20 @@ func NewApp() (*App, error) {
 	return app, nil
 }
 
+// ListenAndServe calls the namesake function for the internal http server object
+func (app *App) ListenAndServe() {
+	if err := app.server.ListenAndServe(); err != nil {
+		log.Println(err)
+	}
+}
+
+func (app *App) Shutdown() error {
+	ctx, cancel := context.WithTimeout(context.Background(), config.HTTPServerReadTimeout)
+	defer cancel()
+	err := app.server.Shutdown(ctx)
+	return err
+}
+
 func newHTTPServer(handler http.Handler, addr string) *http.Server {
 	httpServer := &http.Server{
 		Handler:      handler,
@@ -41,11 +56,4 @@ func newHTTPServer(handler http.Handler, addr string) *http.Server {
 	}
 
 	return httpServer
-}
-
-// ListenAndServe calls the namesake function for the internal http server object
-func (app *App) ListenAndServe() {
-	if err := app.server.ListenAndServe(); err != nil {
-		log.Fatalln(err)
-	}
 }
