@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/peterjasc/microservice-example-go
-/cmd/recipes"
+	"github.com/peterjasc/microservice-example-go/cmd/recipes"
+
 	"github.com/stretchr/testify/assert"
 )
 
