@@ -8,6 +8,8 @@ import (
 	"strconv"
 
 	"github.com/peterjasc/microservice-example-go/config"
+
+	pkgerrs "github.com/pkg/errors"
 )
 
 // RecipeClient handles requests for recipes to 3rd party API
@@ -35,12 +37,12 @@ func (c *RecipeClient) GetRecipe(id string) ([]byte, error) {
 	url := fmt.Sprintf("%s/%s", c.URL, id)
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return nil, err
+		return nil, pkgerrs.Wrap(err, "http request creation failed")
 	}
 
 	resp, err := c.Client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, pkgerrs.Wrap(err, "http request failed")
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -50,7 +52,7 @@ func (c *RecipeClient) GetRecipe(id string) ([]byte, error) {
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, pkgerrs.Wrap(err, "reading body failed")
 	}
 	return body, nil
 }

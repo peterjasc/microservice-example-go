@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/peterjasc/microservice-example-go/config"
+	"github.com/pkg/errors"
 )
 
 // App holds the mux used to add the handler and server for internal usage
@@ -36,7 +37,7 @@ func NewApp() (*App, error) {
 // ListenAndServe calls the namesake function for the internal http server object
 func (app *App) ListenAndServe() {
 	if err := app.server.ListenAndServe(); err != nil {
-		log.Println(err)
+		log.Println(errors.Wrap(err, "failed to listen and serve"))
 	}
 }
 

@@ -7,12 +7,13 @@ import (
 	"syscall"
 
 	"github.com/peterjasc/microservice-example-go/cmd/recipes"
+	pkgerrs "github.com/pkg/errors"
 )
 
 func main() {
 	app, err := recipes.NewApp()
 	if err != nil {
-		log.Println(err)
+		log.Println(pkgerrs.Wrap(err, "failed to start app"))
 		os.Exit(1)
 	}
 	recipesHandler := recipes.NewRecipeHandler()

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/peterjasc/microservice-example-go/config"
+	pkgerrs "github.com/pkg/errors"
 )
 
 // RecipeService wraps the Client that retrieves the recipes from 3rd party API
@@ -38,7 +39,7 @@ func NewRecipeService() *RecipeService {
 func (r *RecipeService) GetSortedRecipes(ids []string) ([]Recipe, error) {
 	unsortedRecipes, err := r.getRecipesForIds(ids)
 	if err != nil {
-		return nil, err
+		return nil, pkgerrs.Wrap(err, "failed to get recipes")
 	}
 
 	return sortRecipes(unsortedRecipes), nil
@@ -59,12 +60,19 @@ func (r *RecipeService) GetRecipesForRange(skip int, top int) ([]Recipe, error) 
 			recipeJSON, err := r.Client.GetRecipe(strconv.Itoa(i + 1))
 
 			if err != nil {
-				c <- recipeWithErrors{Recipe{}, 0, err}
+				c <- recipeWithErrors{
+					Recipe{},
+					0,
+					pkgerrs.Wrap(err, "failed to get recipe with id "+strconv.Itoa(i))}
+				return
 			}
 			var recipe Recipe
 			err = json.Unmarshal(recipeJSON, &recipe)
 			if err != nil {
-				c <- recipeWithErrors{Recipe{}, 0, err}
+				c <- recipeWithErrors{
+					Recipe{},
+					0,
+					pkgerrs.Wrap(err, "failed to unmarshal recipe with id "+strconv.Itoa(i))}
 			}
 			c <- recipeWithErrors{recipe, 0, nil}
 		}(i)
@@ -73,7 +81,7 @@ func (r *RecipeService) GetRecipesForRange(skip int, top int) ([]Recipe, error) 
 	err := getRecipesAsync(rec, c)
 
 	if err != nil {
-		return nil, err
+		return nil, pkgerrs.Wrap(err, "could not retrieve recipes asynchronously")
 	}
 
 	return rec, nil
@@ -83,7 +91,7 @@ func getRecipesAsync(recipes []Recipe, c chan recipeWithErrors) error {
 	for i := 0; i < len(recipes); i++ {
 		rWE := <-c
 		if rWE.Error != nil {
-			return rWE.Error
+			return pkgerrs.Wrap(rWE.Error, "received error via channel")
 		}
 		recipes[i] = rWE.Recipe
 	}
@@ -94,7 +102,7 @@ func getPreparedRecipesAsync(unsortedRecipes PreparedRecipes, c chan recipeWithE
 	for i := 0; i < idsLen; i++ {
 		rWE := <-c
 		if rWE.Error != nil {
-			return rWE.Error
+			return pkgerrs.Wrap(rWE.Error, "received error via channel")
 		}
 		unsortedRecipes[rWE.PrepTime] = append(unsortedRecipes[rWE.PrepTime], rWE.Recipe)
 	}
@@ -110,26 +118,42 @@ func (r *RecipeService) getRecipesForIds(ids []string) (PreparedRecipes, error) 
 			recipeJSON, err := r.Client.GetRecipe(id)
 
 			if err != nil {
-				c <- recipeWithErrors{Recipe{}, 0, err}
+				c <- recipeWithErrors{
+					Recipe{},
+					0,
+					pkgerrs.Wrap(err, "failed to get recipe with id "+id)}
+				return
 			}
 
 			var recipe Recipe
 			err = json.Unmarshal(recipeJSON, &recipe)
 			if err != nil {
-				c <- recipeWithErrors{Recipe{}, 0, err}
+				c <- recipeWithErrors{
+					Recipe{},
+					0,
+					pkgerrs.Wrap(err, "failed to unmarshal recipe with id "+id)}
+				return
 			}
 
 			key, err := getPrepTimeInMinutes(recipe.PrepTime)
 
 			if err != nil {
-				c <- recipeWithErrors{Recipe{}, 0, err}
+				c <- recipeWithErrors{
+					Recipe{},
+					0,
+					pkgerrs.Wrap(err, "get preptime for recipe with id "+id)}
+				return
 			}
 
 			c <- recipeWithErrors{recipe, key, err}
 		}(id)
 	}
 
-	getPreparedRecipesAsync(unsortedRecipes, c, len(ids))
+	err := getPreparedRecipesAsync(unsortedRecipes, c, len(ids))
+
+	if err != nil {
+		return nil, pkgerrs.Wrap(err, "could not retrieve recipes asynchronously")
+	}
 
 	return unsortedRecipes, nil
 }
