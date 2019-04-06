@@ -2,10 +2,12 @@ package recipes
 
 import (
 	"encoding/json"
+	"errors"
 	"math"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/peterjasc/microservice-example-go/config"
 	pkgerrs "github.com/pkg/errors"
@@ -88,23 +90,29 @@ func (r *RecipeService) GetRecipesForRange(skip int, top int) ([]Recipe, error) 
 }
 
 func getRecipesAsync(recipes []Recipe, c chan recipeWithErrors) error {
-	for i := 0; i < len(recipes); i++ {
-		rWE := <-c
+	var count int
+	select {
+	case rWE := <-c:
 		if rWE.Error != nil {
 			return pkgerrs.Wrap(rWE.Error, "received error via channel")
 		}
-		recipes[i] = rWE.Recipe
+		recipes[count] = rWE.Recipe
+		count++
+	case <-time.After(config.AsyncRecieveTimeout):
+		return errors.New("asynchronous retrieval timeout exceeded")
 	}
 	return nil
 }
 
 func getPreparedRecipesAsync(unsortedRecipes PreparedRecipes, c chan recipeWithErrors, idsLen int) error {
-	for i := 0; i < idsLen; i++ {
-		rWE := <-c
+	select {
+	case rWE := <-c:
 		if rWE.Error != nil {
 			return pkgerrs.Wrap(rWE.Error, "received error via channel")
 		}
 		unsortedRecipes[rWE.PrepTime] = append(unsortedRecipes[rWE.PrepTime], rWE.Recipe)
+	case <-time.After(config.AsyncRecieveTimeout):
+		return errors.New("asynchronous retrieval timeout exceeded")
 	}
 	return nil
 }
