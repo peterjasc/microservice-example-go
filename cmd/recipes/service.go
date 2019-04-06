@@ -90,29 +90,35 @@ func (r *RecipeService) GetRecipesForRange(skip int, top int) ([]Recipe, error) 
 }
 
 func getRecipesAsync(recipes []Recipe, c chan recipeWithErrors) error {
+	timeout := time.After(config.AsyncRecieveTimeout)
 	var count int
-	select {
-	case rWE := <-c:
-		if rWE.Error != nil {
-			return pkgerrs.Wrap(rWE.Error, "received error via channel")
+	for i := 0; i < len(recipes); i++ {
+		select {
+		case rWE := <-c:
+			if rWE.Error != nil {
+				return pkgerrs.Wrap(rWE.Error, "received error via channel")
+			}
+			recipes[count] = rWE.Recipe
+			count++
+		case <-timeout:
+			return errors.New("asynchronous retrieval timeout exceeded")
 		}
-		recipes[count] = rWE.Recipe
-		count++
-	case <-time.After(config.AsyncRecieveTimeout):
-		return errors.New("asynchronous retrieval timeout exceeded")
 	}
 	return nil
 }
 
 func getPreparedRecipesAsync(unsortedRecipes PreparedRecipes, c chan recipeWithErrors, idsLen int) error {
-	select {
-	case rWE := <-c:
-		if rWE.Error != nil {
-			return pkgerrs.Wrap(rWE.Error, "received error via channel")
+	timeout := time.After(config.AsyncRecieveTimeout)
+	for i := 0; i < idsLen; i++ {
+		select {
+		case rWE := <-c:
+			if rWE.Error != nil {
+				return pkgerrs.Wrap(rWE.Error, "received error via channel")
+			}
+			unsortedRecipes[rWE.PrepTime] = append(unsortedRecipes[rWE.PrepTime], rWE.Recipe)
+		case <-timeout:
+			return errors.New("asynchronous retrieval timeout exceeded")
 		}
-		unsortedRecipes[rWE.PrepTime] = append(unsortedRecipes[rWE.PrepTime], rWE.Recipe)
-	case <-time.After(config.AsyncRecieveTimeout):
-		return errors.New("asynchronous retrieval timeout exceeded")
 	}
 	return nil
 }
